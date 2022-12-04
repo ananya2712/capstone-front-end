@@ -475,7 +475,7 @@ class SimilarityPredictions(object):
 
 # STREAMLIT CODE STARTS HERE
 
-menu = ["Home","Overall Recommendations - Weighted","Content Based Model Recommendations"]
+menu = ["Home","Overall Recommendations - Weighted","Content Based Model Recommendations","Metrics Overall"]
 choice = st.sidebar.selectbox("Menu",menu)
 
 if choice =="Home":
@@ -726,8 +726,18 @@ if choice =="Content Based Model Recommendations":
 
     st.text(movtitle)
 
-
-
+if choice=="Metrics Overall":
+    st.header("Results")
+    data = {'Model Name': ['Baseline MF', 'Hybrid SocialLGCN', 'NNCF Model', 'Content Based','Cluster Based','Hybrid-Weighted'],
+            'Precision': [0.0724,0.1610,0.41300,0.0215,0.0265,0.1295],
+            'Recall':[0.0085,0.0193,0.03297,0.00179,0.00314,0.0199],
+            'Novelty':[4.2867,4.4584, 1.4334,6.7443,6.7804,4.6568],
+            'Coverage':[10.91,19.03,0.69,3.41,11.94,13.47],
+            'Serendipity':[ 1.2553,1.2340,1.13977,1.11556,1.097194,1.2530],
+            'Intra List Similarity':[ 0.1868,0.2375,0.2351,0.1939,0.4709,0.1962],
+            'Personalisation':[ 0.9789,0.9882,0.2228,0.8434,0.9819,0.8113]
+    }
+    st.table(pd.DataFrame(data, columns = ['Model Name', 'Precision', 'Recall', 'Novelty', 'Coverage', 'Serendipity', 'Intra List Similarity', 'Personalisation']))
 
 
 
