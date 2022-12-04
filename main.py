@@ -1,10 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import csv
-import os
 
 weighted = [[3499, 1217, 818, 2449, 343, 296, 356, 1, 2599, 56949],
  [351, 1754, 2065, 5192, 611, 480, 296, 780, 3897, 2420],
