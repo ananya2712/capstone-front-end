@@ -877,7 +877,7 @@ class SimilarityPredictions(object):
 
 # STREAMLIT CODE STARTS HERE
 
-menu = ["Home","Overall Recommendations - Weighted","Content Based Model Recommendations", "NN CF Model Recommendations", "GCN Model Recommendations", "Metrics Overall"]
+menu = ["Home","Overall Recommendations - Weighted","Content Based Model Recommendations", "NN CF Model Recommendations", "GCN Model Recommendations","Clustering Model Recommendations", "Metrics Overall"]
 choice = st.sidebar.selectbox("Menu",menu)
 
 if choice =="Home":
@@ -1294,6 +1294,30 @@ if choice =="Content Based Model Recommendations":
     st.write("Intra-list similarity: 0.1939")
     st.write("Serendipity: 1.1156")
 
+if choice=="Clustering Model Recommendations":
+    st.subheader("Clustering Model Recommendations")
+    st.text("The data is clustered into 20 clusters based on tag information - the")
+    st.text("clusters are overlapping since one tag can represent")
+    st.text("multiple genres. The movies are then recommended based on the cluster.")
+    st.text("Each user is modelled using the tags.")
+    st.text("The user is then recommended movies from the cluster that the user is modelled in.")
+
+    st.subheader("Clusters")
+    st.image("assets/clusters.jpeg")
+
+    clusters = pd.read_csv("data/Top15cluster.csv")
+    st.table(pd.DataFrame(clusters, columns = ['Cluster 0', 'Cluster 1','Cluster 2','Cluster 3','Cluster 4','Cluster 5','Cluster 6','Cluster 7',
+    'Cluster 8','Cluster 9','Cluster 10','Cluster 11','Cluster 12','Cluster 13','Cluster 14','Cluster 15','Cluster 16','Cluster 17','Cluster 18','Cluster 19']))
+
+    st.subheader("Evaluation metrics")
+    st.write("Precision: 0.0265")
+    st.write("Recall: 0.0314")
+    st.write("Coverage: 11.94")
+    st.write("Novelty: 6.7804")
+    st.write("Personalization: 0.9819")
+    st.write("Intra-list similarity: 0.4709")
+    st.write("Serendipity: 1.0972")
+
 if choice=="Metrics Overall":
     st.header("Results")
     data = {'Model Name': ['Baseline MF', 'Hybrid SocialLGCN', 'NNCF Model', 'Content Based','Cluster Based','Hybrid-Weighted'],
@@ -1306,6 +1330,3 @@ if choice=="Metrics Overall":
             'Personalisation':[ 0.9789,0.9882,0.2228,0.8434,0.9819,0.8113]
     }
     st.table(pd.DataFrame(data, columns = ['Model Name', 'Precision', 'Recall', 'Novelty', 'Coverage', 'Serendipity', 'Intra List Similarity', 'Personalisation']))
-
-
-
