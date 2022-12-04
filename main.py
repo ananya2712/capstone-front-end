@@ -887,7 +887,7 @@ if choice =="Home":
     st.text('It is comprised of four models - Content based model, Clustering model,')
     st.text('Social GCN hybrid Model and a Neural CF model.')
     st.subheader('Hybrid Model - Working')
-    st.video("hybrid-model-demo.mp4", format="video/mp4", start_time=0)
+    st.video("assets/hybrid-model-demo.mp4", format="video/mp4", start_time=0)
 
 
 if choice =="Overall Recommendations - Weighted":
