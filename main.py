@@ -7,9 +7,11 @@ import sys
 import pickle
 import time
 import datetime
+import matplotlib.pyplot as plt
 #import seaborn as sns
 from importlib import reload
 #from IPython.core.display import display, HTML, clear_output
+
 import multiprocessing
 
 #import torch.nn as nn
@@ -714,8 +716,9 @@ if choice =="Content Based Model Recommendations":
             content_recs.append(movie_recs)
         return content_recs
 
-    number = st.number_input('Pick a userId')
-
+    
+    number = st.number_input("Enter a user id", min_value=0, max_value=199, value=1, step=1)
+    number = int(number)
     movs = pd.read_csv("data/modified_movies.csv")
     movtitle = []
     for i in content_recs[int(number)]:
