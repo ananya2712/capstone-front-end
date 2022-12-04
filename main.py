@@ -10,9 +10,6 @@ import datetime
 #import seaborn as sns
 from importlib import reload
 #from IPython.core.display import display, HTML, clear_output
-
-import matplotlib.pyplot as plt
-
 import multiprocessing
 
 #import torch.nn as nn
