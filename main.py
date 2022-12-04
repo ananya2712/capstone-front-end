@@ -489,7 +489,7 @@ if choice =="Home":
 if choice =="Overall Recommendations - Weighted":
     #get recommendations titles
     # MOVIES FOR OVERALL RECCS 
-    movies = pd.read_csv('data/modified_movies2.csv')
+    movies = pd.read_csv('data/modified_movies.csv')
     movies.drop_duplicates(subset='movieId', inplace=True)
 
     st.header("Recommendations for a User")
