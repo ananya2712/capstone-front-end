@@ -1,7 +1,30 @@
 import streamlit as st
+
 import numpy as np
 import pandas as pd
-import csv
+import os
+import sys
+import pickle
+import time
+import datetime
+import matplotlib.pyplot as plt
+#import seaborn as sns
+from importlib import reload
+#from IPython.core.display import display, HTML, clear_output
+
+import matplotlib.pyplot as plt
+
+import multiprocessing
+
+#import torch.nn as nn
+#import torch.optim as optim
+#from torch.utils.data import Dataset, DataLoader
+
+from sklearn.metrics.pairwise import cosine_similarity
+#from sklearn.metrics.pairwise import euclidean_distances
+#from sklearn.feature_extraction.text import TfidfVectorizer
+#from sklearn.decomposition import TruncatedSVD
+import scipy.sparse as sp
 
 weighted = [[3499, 1217, 818, 2449, 343, 296, 356, 1, 2599, 56949],
  [351, 1754, 2065, 5192, 611, 480, 296, 780, 3897, 2420],
@@ -204,36 +227,507 @@ weighted = [[3499, 1217, 818, 2449, 343, 296, 356, 1, 2599, 56949],
  [5010, 4956, 5014, 3944, 1600, 480, 780, 1, 3157, 5377],
  [4954, 4960, 5012, 547, 420, 296, 318, 480, 381, 172]]
 
-movies = pd.read_csv('modified_movies2.csv')
-movies.drop_duplicates(subset='movieId', inplace=True)
+content_recs = [[3499, 1217, 818, 2335, 42, 272, 4223, 4614, 1342, 2670],
+ [351, 1754, 2065, 2049, 2042, 2024, 1810, 1799, 1753, 1670],
+ [4925, 3499, 2335, 1217, 818, 272, 4223, 42, 4614, 368],
+ [4925, 3499, 3548, 3831, 3792, 3597, 3596, 3578, 3572, 3507],
+ [4925, 3499, 2335, 1217, 818, 272, 4223, 42, 368, 2469],
+ [4925, 3499, 2335, 1217, 818, 272, 4223, 42, 368, 3739],
+ [4929, 4925, 3499, 818, 2335, 1217, 4614, 4223, 42, 272],
+ [4925, 4929, 3499, 818, 2335, 1217, 2670, 1342, 3810, 3264],
+ [4925, 4929, 4614, 295, 3499, 3950, 3481, 3448, 3503, 3978],
+ [4932, 4929, 4925, 1904, 818, 1217, 2335, 4614, 3499, 3873],
+ [4933, 4929, 4925, 4932, 818, 2335, 1217, 1904, 4614, 3499],
+ [4925, 4929, 4933, 3499, 1217, 818, 2335, 4932, 1342, 2670],
+ [4925, 4929, 4933, 4932, 818, 2335, 1217, 3499, 4614, 4223],
+ [4936, 4925, 4929, 4933, 4932, 3499, 818, 2335, 1217, 4223],
+ [4925, 4929, 4936, 4933, 4932, 3499, 4223, 42, 272, 818],
+ [4936, 4925, 4929, 4933, 818, 1217, 2335, 3499, 2863, 2871],
+ [4939, 4925, 4936, 4929, 4933, 3301, 3591, 3476, 3449, 3394],
+ [4925, 4936, 4929, 4939, 4933, 4932, 3499, 818, 2335, 1217],
+ [4941, 4936, 4925, 4929, 4939, 4933, 1217, 818, 2335, 3499],
+ [4936, 4929, 4925, 4941, 4933, 4939, 4932, 3243, 3572, 3448],
+ [4943, 4925, 4936, 4941, 4929, 4933, 4939, 4932, 1750, 1831],
+ [4932, 1885, 83, 1999, 1994, 580, 2053, 2168, 2169, 2491],
+ [4932, 4933, 4929, 4925, 4936, 4943, 4941, 4939, 4614, 818],
+ [4946, 4933, 4929, 4932, 4925, 4936, 4943, 4939, 4941, 818],
+ [4947, 4933, 4929, 4925, 4946, 4936, 4939, 4943, 4932, 4941],
+ [4925, 4933, 4947, 4929, 4936, 4946, 4943, 4941, 4939, 4932],
+ [4925, 4929, 4943, 4936, 4933, 4947, 4946, 4941, 4932, 4939],
+ [4950, 4933, 4947, 4946, 4925, 4932, 4929, 4936, 4939, 4941],
+ [4951, 4946, 4933, 4947, 4929, 4925, 4932, 4936, 4950, 4939],
+ [4951, 4947, 4929, 4933, 4946, 4925, 4936, 4950, 4939, 4932],
+ [4950, 4932, 4933, 4946, 4951, 4947, 4929, 4925, 4936, 4943],
+ [4954, 4925, 4929, 4933, 4947, 4951, 4936, 4943, 4946, 4941],
+ [4955, 4933, 4951, 4946, 4947, 4950, 4954, 4929, 4932, 4925],
+ [4956, 4932, 4954, 4946, 4933, 4950, 4951, 4955, 4947, 4929],
+ [4957, 4956, 4932, 4955, 4950, 4946, 4933, 4951, 4947, 4954],
+ [4958, 4947, 4939, 4925, 4933, 4951, 4929, 4955, 4950, 4946],
+ [4936, 4929, 4943, 4941, 4925, 4939, 4947, 4946, 4933, 4954],
+ [4960, 4954, 4956, 4933, 4951, 4925, 4929, 4947, 4946, 4950],
+ [4936, 4941, 4929, 4943, 4925, 4954, 4951, 4939, 4960, 4947],
+ [4957, 4956, 4932, 4946, 4950, 4955, 4960, 4951, 4933, 4947],
+ [4963, 4957, 4956, 4932, 4960, 4946, 4950, 4955, 4933, 4951],
+ [4957, 4963, 4956, 4932, 4950, 4946, 4955, 4960, 4933, 4951],
+ [4933, 4947, 4929, 4951, 4925, 4955, 4946, 4960, 4954, 4936],
+ [4960, 4954, 4956, 4933, 4925, 4950, 4947, 4951, 4946, 4929],
+ [4967, 4929, 4936, 4925, 4946, 4933, 4947, 4951, 4941, 4943],
+ [4957, 4956, 4955, 4960, 4950, 4933, 4946, 4951, 4963, 4932],
+ [4960, 4954, 4925, 4929, 4936, 4933, 4943, 4951, 4947, 4946],
+ [4970, 4951, 4946, 4929, 4960, 4954, 4933, 4925, 4947, 4956],
+ [4971, 4946, 4933, 4947, 4951, 4960, 4932, 4929, 4970, 4950],
+ [4929, 4954, 4925, 4960, 4970, 4936, 4947, 4943, 4933, 4946],
+ [4973, 4946, 4932, 4971, 4957, 4956, 4933, 4951, 4970, 4960],
+ [4974, 4936, 4941, 4954, 4939, 4925, 4929, 4960, 4943, 4967],
+ [4975, 4946, 4933, 4960, 4973, 4951, 4956, 4932, 4971, 4947],
+ [4946, 4933, 4975, 4951, 4929, 4947, 4970, 4960, 4925, 4973],
+ [4932, 4970, 4946, 4975, 4973, 4960, 4929, 4933, 4956, 4951],
+ [4978, 4975, 4946, 4933, 4951, 4947, 4960, 4971, 4955, 4929],
+ [4979, 4936, 4941, 4974, 4939, 4943, 4925, 4929, 4967, 4954],
+ [4980, 4975, 4978, 4956, 4960, 4946, 4933, 4973, 4970, 4951],
+ [4955, 4951, 4978, 4958, 4933, 4947, 4946, 4975, 4950, 4973],
+ [4982, 4960, 4954, 4980, 4970, 4975, 4929, 4933, 4956, 4925],
+ [4957, 4975, 4978, 4980, 4973, 4956, 4955, 4963, 4946, 4932],
+ [4956, 4980, 4975, 4960, 4982, 4954, 4978, 4963, 4925, 4933],
+ [4985, 4980, 4933, 4978, 4975, 4947, 4982, 4946, 4960, 4956],
+ [4925, 4970, 4954, 4929, 4943, 4936, 4941, 4951, 4939, 4947],
+ [4987, 4975, 4932, 4980, 4956, 4946, 4978, 4973, 4971, 4960],
+ [4925, 4929, 4951, 4947, 4970, 4936, 4933, 4954, 4978, 4946],
+ [4989, 4933, 4978, 4946, 4985, 4971, 4980, 4975, 4947, 4960],
+ [4990, 4955, 4950, 4957, 4978, 4951, 4933, 4980, 4975, 4956],
+ [4991, 4980, 4975, 4973, 4956, 4978, 4946, 4932, 4957, 4960],
+ [4992, 4957, 4991, 4956, 4975, 4963, 4980, 4973, 4987, 4978],
+ [4993, 4978, 4975, 4950, 4960, 4947, 4951, 4980, 4992, 4991],
+ [4994, 4992, 4963, 4957, 4956, 4975, 4980, 4991, 4987, 4978],
+ [4995, 4991, 4980, 4978, 4975, 4956, 4992, 4960, 4955, 4933],
+ [4936, 4929, 4925, 4967, 4947, 4933, 4954, 4941, 4989, 4951],
+ [4960, 4929, 4970, 4951, 4954, 4975, 4946, 4978, 4925, 4982],
+ [4998, 4992, 4991, 4995, 4980, 4973, 4994, 4956, 4957, 4975],
+ [4933, 4978, 4951, 4947, 4995, 4946, 4975, 4955, 4993, 4989],
+ [4978, 4955, 4933, 4989, 4995, 4975, 4980, 4946, 4971, 4998],
+ [4985, 4995, 4980, 4955, 4978, 4960, 4956, 4975, 4991, 4993],
+ [5002, 4936, 4974, 4941, 4979, 4929, 4967, 4925, 4943, 4954],
+ [5003, 4957, 4998, 4956, 4992, 4963, 4991, 4995, 4994, 4980],
+ [5004, 4975, 4978, 4995, 4980, 4933, 4991, 4946, 4985, 4960],
+ [4982, 4954, 4960, 4985, 4980, 4925, 4947, 4933, 4975, 5004],
+ [4943, 4936, 4925, 5002, 4941, 4974, 4979, 4954, 4939, 4982],
+ [4925, 4929, 4936, 4939, 4947, 4967, 4954, 4933, 4941, 4943],
+ [5008, 4929, 4967, 4936, 4970, 4925, 4939, 4943, 4947, 4951],
+ [5009, 4991, 4951, 4973, 4946, 4970, 4932, 4975, 4980, 4995],
+ [5010, 4992, 4995, 4991, 4956, 4980, 4998, 4957, 5004, 4975],
+ [4929, 4947, 4970, 4946, 4925, 4933, 4951, 4982, 4978, 4980],
+ [5012, 4933, 4947, 4978, 4925, 4929, 4960, 4954, 5004, 4951],
+ [5013, 4978, 5004, 4975, 4980, 4933, 4995, 4946, 5012, 4951],
+ [5014, 4998, 4985, 4956, 4980, 5010, 4992, 4995, 5004, 4994],
+ [5015, 4995, 4955, 4957, 5010, 4991, 4992, 5004, 4990, 4998],
+ [5016, 4943, 5002, 4925, 4979, 4936, 4929, 4954, 4941, 4970],
+ [5017, 4980, 4982, 4956, 4975, 4932, 5013, 4946, 4995, 5010],
+ [5013, 5004, 4933, 4978, 5012, 4995, 4960, 4975, 4980, 4947],
+ [4947, 4929, 4936, 5012, 4967, 4925, 4933, 4939, 4978, 4979],
+ [5020, 4982, 5012, 4933, 4960, 4954, 4929, 5013, 4947, 4989],
+ [5021, 4936, 5002, 4941, 4979, 4943, 4929, 4967, 4925, 4974],
+ [4960, 4982, 4980, 4975, 4970, 4954, 5013, 4951, 5012, 4933],
+ [5023, 4960, 4982, 4980, 5013, 5020, 4975, 5004, 5012, 4978],
+ [5024, 4980, 4956, 4960, 5023, 4975, 4982, 4995, 5013, 5004],
+ [5025, 4933, 4946, 5013, 4951, 4978, 5012, 4980, 5004, 4970],
+ [5026, 5013, 4978, 4933, 5012, 5004, 4947, 4975, 4946, 4951],
+ [5027, 5021, 4936, 4967, 5008, 4941, 4929, 4943, 5002, 4925],
+ [4957, 4992, 4998, 5010, 4973, 4991, 4963, 4994, 4956, 5003],
+ [5029, 4978, 4995, 5004, 5013, 4980, 4933, 5026, 4998, 4975],
+ [5030, 5015, 4991, 4995, 5010, 4955, 4992, 4973, 5004, 4975],
+ [4975, 4980, 4978, 5013, 5004, 4991, 4946, 4995, 4932, 5026],
+ [5021, 4936, 4925, 4929, 5002, 4967, 4979, 4941, 5027, 5008],
+ [5033, 4951, 4978, 5026, 4946, 5013, 5004, 4975, 4933, 4991],
+ [5026, 5013, 5012, 4933, 4980, 4982, 4947, 4960, 4925, 4970],
+ [4936, 4967, 5002, 5021, 4929, 4979, 5008, 4939, 4974, 4925],
+ [5036, 4936, 4929, 5021, 4941, 4925, 4967, 5002, 4939, 5012],
+ [5012, 4947, 5026, 5020, 4933, 5013, 4929, 4978, 5023, 4925],
+ [5038, 5013, 4978, 5004, 4975, 5026, 4946, 4980, 4995, 4933],
+ [5039, 5027, 5036, 5021, 4936, 4929, 5008, 4941, 4925, 4967],
+ [5040, 4985, 5013, 4947, 5012, 4933, 5026, 5020, 5004, 4978],
+ [5021, 4936, 4979, 5002, 4974, 5036, 4941, 5039, 4925, 4929],
+ [5021, 5036, 4936, 5002, 5039, 4974, 4929, 4925, 4967, 4941],
+ [5030, 4992, 4991, 4957, 5015, 4995, 4973, 5038, 5010, 4975],
+ [4995, 4992, 4957, 5015, 5010, 4994, 4991, 5004, 5038, 5029],
+ [5021, 4936, 4967, 5002, 4979, 4929, 5036, 5039, 5008, 5027],
+ [5046, 4980, 4991, 4975, 5038, 4995, 5013, 5010, 5004, 4978],
+ [5047, 5033, 5038, 4978, 4946, 5004, 5026, 4975, 4933, 5013],
+ [5048, 5027, 5039, 4941, 4943, 4936, 5036, 5021, 5008, 4925],
+ [5049, 4932, 4975, 4970, 4987, 4980, 4991, 5046, 4946, 5038],
+ [4954, 4925, 5012, 4929, 4970, 5025, 5026, 4933, 4947, 4960],
+ [5051, 4933, 5026, 4978, 5012, 5013, 4947, 5038, 5004, 4946],
+ [5012, 5026, 4929, 5051, 4933, 4925, 4960, 4954, 4951, 4947],
+ [5053, 4980, 5046, 4975, 4995, 5038, 4991, 5004, 5013, 4978],
+ [5054, 5013, 5038, 5026, 4978, 4980, 4975, 5004, 4946, 5053],
+ [5055, 5026, 5013, 5012, 5051, 4933, 5054, 4978, 5038, 5004],
+ [5054, 4946, 4975, 4980, 5026, 5013, 5038, 5046, 4978, 5055],
+ [4995, 4991, 5053, 5038, 4975, 5004, 4992, 4978, 5013, 5046],
+ [4995, 4992, 5053, 4994, 4957, 4998, 5015, 4991, 5004, 5010],
+ [4980, 4975, 5038, 5054, 5046, 5013, 5053, 4946, 4978, 5004],
+ [5060, 4973, 5053, 4946, 4991, 5046, 5038, 4975, 4932, 4992],
+ [5061, 5023, 4985, 5040, 4925, 4982, 5020, 5012, 5014, 5055],
+ [5062, 5013, 4980, 4933, 5054, 5026, 5025, 5055, 5038, 5012],
+ [5063, 4929, 4946, 5054, 4975, 5062, 5023, 5049, 5026, 4980],
+ [5064, 4955, 5033, 4990, 5047, 4958, 4951, 5051, 4933, 4947],
+ [5065, 5049, 5063, 4929, 4975, 4932, 5026, 5012, 4967, 5062],
+ [5066, 5055, 5023, 4960, 5026, 5012, 4982, 4929, 5062, 4925],
+ [5067, 4929, 4970, 4951, 4946, 5026, 5012, 4925, 4947, 5025],
+ [5064, 4990, 4958, 4955, 5015, 4950, 5051, 5033, 4933, 5047],
+ [5012, 5062, 5026, 5054, 4933, 5013, 5055, 4978, 4980, 5051],
+ [5026, 5013, 5038, 5055, 4978, 5054, 4951, 4975, 5004, 5012],
+ [4936, 5002, 5036, 5067, 5021, 4929, 4925, 4954, 4941, 4951],
+ [5066, 5054, 5023, 4946, 4978, 5026, 5013, 5051, 5038, 5055],
+ [4946, 4978, 5026, 5013, 5054, 5038, 5062, 4975, 5012, 4933],
+ [5053, 5023, 4980, 5024, 5054, 4975, 5046, 4956, 5017, 5013],
+ [4929, 5012, 4925, 5026, 5055, 4954, 4951, 4970, 4933, 4947],
+ [4957, 4992, 5053, 4995, 5010, 4991, 4998, 5046, 4994, 4956],
+ [5077, 4963, 4957, 4998, 4992, 5010, 4994, 5053, 4956, 5014],
+ [5026, 4946, 4978, 5054, 5038, 4951, 4933, 5051, 5013, 5055],
+ [5012, 5026, 4933, 5055, 5051, 4947, 5013, 4978, 5066, 5062],
+ [5080, 5026, 5013, 5054, 4975, 5038, 4960, 5062, 5055, 4951],
+ [4943, 5048, 4936, 5021, 5002, 4925, 4941, 4954, 5016, 4979],
+ [4995, 5038, 5013, 4978, 4951, 5026, 5004, 5055, 5051, 4955],
+ [5012, 4933, 4925, 5025, 5062, 5051, 4929, 5013, 4954, 5026],
+ [4925, 4936, 4929, 4954, 5012, 5066, 5055, 4947, 5020, 5026],
+ [5010, 5077, 4992, 4957, 4956, 4963, 5053, 5046, 5003, 4991],
+ [4954, 4925, 5012, 4936, 4941, 5055, 4929, 4933, 4943, 4960],
+ [4951, 4947, 5051, 4933, 5026, 5033, 5012, 5055, 4929, 5067],
+ [5064, 5051, 5033, 4955, 5047, 5029, 4933, 4958, 4947, 4978],
+ [4932, 5049, 4987, 5065, 4975, 5053, 5080, 5054, 4960, 5063],
+ [5012, 4933, 5051, 5026, 4947, 5055, 5062, 5013, 4978, 5054],
+ [4936, 5021, 4929, 5036, 4925, 5066, 4941, 4967, 5020, 5012],
+ [5092, 5004, 4978, 5038, 5013, 5053, 4980, 4995, 4975, 5054],
+ [5093, 5008, 5067, 4970, 4951, 4929, 4946, 5009, 5039, 4947],
+ [5094, 5080, 4951, 5038, 5004, 5013, 4975, 4978, 4970, 5026],
+ [4943, 4925, 4954, 5048, 4941, 4936, 5055, 5012, 5062, 4970],
+ [5096, 5047, 5015, 4971, 4994, 4950, 5038, 5004, 4955, 4957],
+ [4992, 5010, 4957, 4963, 4991, 5053, 5046, 4994, 4987, 4973],
+ [4974, 5021, 4979, 4936, 5002, 4967, 5020, 4941, 4929, 4925],
+ [5051, 4958, 4947, 5064, 5033, 4933, 5012, 4978, 5096, 5047],
+ [5100, 4980, 5014, 5046, 5024, 5023, 5010, 4956, 4998, 5092],
+ [4957, 5077, 5003, 4992, 1885, 4963, 5010, 83, 3948, 1396],
+ [5102, 5077, 3115, 1935, 3355, 4388, 599, 1426, 3071, 4963],
+ [5103, 5010, 4992, 5100, 5053, 4998, 4956, 5092, 4995, 5024],
+ [5051, 4933, 5012, 4989, 4947, 4978, 5026, 5096, 5047, 5038],
+ [5105, 4957, 4992, 4991, 5010, 4998, 4994, 5015, 4995, 5053],
+ [5106, 5080, 5038, 5053, 5013, 4975, 4995, 5004, 4980, 4960],
+ [5107, 5060, 5105, 5009, 4957, 4973, 4991, 4992, 5030, 4932],
+ [5020, 4982, 5023, 5066, 4960, 4954, 4936, 5012, 5063, 4929],
+ [5100, 5066, 5023, 4982, 4985, 5061, 5062, 4980, 5017, 5014],
+ [5110, 4951, 4925, 5012, 4954, 4929, 5067, 4970, 5055, 5036],
+ [5111, 5013, 5054, 5038, 4978, 5026, 5004, 4975, 4980, 5092],
+ [4947, 5012, 5051, 4933, 4925, 5026, 4929, 4954, 5055, 5110],
+ [5009, 5033, 4951, 5110, 5067, 5025, 4970, 4946, 5047, 5026],
+ [4957, 4992, 5105, 4963, 4956, 5010, 4991, 4998, 5053, 4994],
+ [4925, 4943, 4939, 4936, 4929, 4947, 4954, 5066, 4941, 5012],
+ [5051, 4989, 4933, 5047, 5012, 4978, 4947, 5026, 5092, 5033],
+ [5051, 4978, 4933, 5013, 4955, 5038, 5004, 5026, 5092, 4947],
+ [5053, 4980, 4975, 4973, 5092, 5111, 4998, 5046, 4991, 5054],
+ [5049, 4932, 4991, 4987, 4980, 4975, 5046, 4956, 5053, 4973],
+ [5120, 4951, 5110, 5055, 5051, 4947, 5026, 4933, 5033, 5012],
+ [5010, 4956, 5014, 5046, 4998, 5024, 4991, 4980, 5053, 4992],
+ [4954, 4960, 5012, 5055, 5080, 5026, 5066, 4925, 4951, 5110]]
 
+# CONTENT BASED MODEL FUNCTIONS
+class SimilarityPredictions(object):
+    '''This class calculates a similarity matrix from latent embeddings.
+    There is a method to save this similarity model locally, and a method for
+    predicting similar items from the matrix.
+    Input: embeddings - a pandas dataframe of items and latent dimensions.
+            similarity_metric = str definining the similarity metrics to use'''
 
-menu = ["Home","Recommendations"]
+    def __init__(self, embeddings, similarity_metric='cosine'):
+        assert similarity_metric in ['cosine', 'euclidean'], "unsupported similarity metric."
+        self.embeddings = embeddings
+        self.ids = embeddings.index.tolist()
+        self.similarity_metric = similarity_metric
+        if similarity_metric == 'cosine':
+            self.similarity_matrix = self.calculate_cosine_similarity_matrix()
+        if similarity_metric == 'euclidean':
+            self.similarity_matrix = self.calculate_euclidean_distances_matrix()
+
+    def calculate_cosine_similarity_matrix(self):
+        '''Calculates a cosine similarity matrix from the embeddings'''
+        similarity_matrix = pd.DataFrame(cosine_similarity(
+            X=self.embeddings),
+            index=self.ids)
+        similarity_matrix.columns = self.ids
+        return similarity_matrix
+
+    def calculate_euclidean_distances_matrix(self):
+        '''Calculates a cosine similarity matrix from the embeddings'''
+        similarity_matrix= pd.DataFrame(euclidean_distances(
+            X=self.embeddings),
+            index=self.ids)
+        similarity_matrix.columns = self.ids
+        return similarity_matrix
+
+    def predict_similar_items(self, seed_item, n):
+        '''Use the similarity_matrix to return n most similar items.'''
+        similar_items = pd.DataFrame(self.similarity_matrix.loc[seed_item])
+        similar_items.columns = ["similarity_score"]
+        if self.similarity_metric == 'cosine':
+            similar_items = similar_items.sort_values('similarity_score', ascending=False)
+        if self.similarity_metric == 'euclidean':
+            similar_items = similar_items.sort_values('similarity_score', ascending=True)
+        similar_items = similar_items.head(n)
+        similar_items.reset_index(inplace=True)
+        similar_items = similar_items.rename(index=str, columns={"index": "item_id"})
+        return similar_items.to_dict()
+
+# STREAMLIT CODE STARTS HERE
+
+menu = ["Home","Overall Recommendations - Weighted","Content Based Model Recommendations"]
 choice = st.sidebar.selectbox("Menu",menu)
 
 if choice =="Home":
     # LANDING PAGE 
     st.title('Movie Recommender System')
     st.subheader('This is a hybrid recommender system')
-    st.text('It is comprised of four models - content based model, clustering model,')
+    st.text('It is comprised of four models - Content based model, Clustering model,')
     st.text('Social GCN hybrid Model and a Neural CF model.')
     st.subheader('Hybrid Model - Working')
     st.video("hybrid-model-demo.mp4", format="video/mp4", start_time=0)
 
 
-if choice =="Recommendations":
+if choice =="Overall Recommendations - Weighted":
     #get recommendations titles
+    # MOVIES FOR OVERALL RECCS 
+    movies = pd.read_csv('data/modified_movies2.csv')
+    movies.drop_duplicates(subset='movieId', inplace=True)
+
     st.header("Recommendations for a User")
     st.text("The Models have been pre-trained and the results are stored.")
     st.text("Enter a user id and get recommendations for that user.")
 
-    user_id = st.number_input("Enter a user id", min_value=1, max_value=200, value=1, step=1)
+    user_id = st.number_input("Enter a user id", min_value=0, max_value=199, value=1, step=1)
     user_id = int(user_id)
-    # st.text("The user id entered is {}".format(user_id))
     final_recommendations = weighted[user_id]
     st.subheader("The recommendations for the user are:")
     for id in final_recommendations:
         st.text(movies[movies['movieId']==id]['title'].values[0])
+
+if choice =="Content Based Model Recommendations":
+    st.header("Content-based recommender")
+    tags = pd.read_csv("data/tags.csv")
+    ratings = pd.read_csv("data/modified_ratings.csv")
+    ratings = ratings.drop_duplicates('movieId')
+    users = pd.read_csv("data/modified_users.csv")
+    users_list = users.userId.unique()
+    movies = pd.read_csv("data/modified_movies.csv")
+    movies_list = movies.movieId.unique()
+    new_tags = tags[tags['movieId'].isin(movies_list) & tags['userId'].isin(users_list)]
+
+    st.subheader("Raw data")
+    st.write("Users: ")
+    st.write(users)
+    st.write("Movies: ")
+    st.write(movies)
+    st.write("Ratings: ")
+    st.write(ratings)
+    st.write("Tags: ")
+    st.write(new_tags)
+
+    #map movie index for tags data
+    new_tags = pd.merge(new_tags, ratings, on="movieId", how="right")
+
+    #map movie index for movie data
+    movies = pd.read_csv("data/modified_movies.csv")
+    movies = pd.merge(movies, ratings, on="movieId", how="inner")
+    movies.set_index('movieId', inplace=True)
+    movies['genres'] = movies['genres'].str.replace(pat="|", repl=" ")
+    movies['genres'] = movies['genres'].str.replace(pat="-", repl="")
+
+    #create documents from tags
+    new_tags.fillna("", inplace=True)
+    new_tags = pd.DataFrame(new_tags.groupby('movieId')['tag'].apply(lambda x: "{%s}" % ' '.join(x)))
+    new_tags.reset_index(inplace=True)
+    movie_id = new_tags.movieId
+
+    # add genres to document
+    new_tags = pd.merge(movies, new_tags, left_index=True, right_on='movieId', how='right')
+    new_tags['document'] = new_tags[['tag', 'genres']].apply(lambda x: ' '.join(x), axis=1)
+
+    #loading the content embeddings
+    content_embeddings = pd.read_pickle("data/autoencoder_embeddings.pkl")
+    content_embeddings = pd.DataFrame(content_embeddings)
+
+    st.subheader("Loading the movie embeddings from the saved model: ")
+    st.write(content_embeddings)
+
+    #format movie lookup data
+    movies = pd.read_csv("data/modified_movies.csv")
+    ratings = pd.read_csv("data/modified_ratings.csv")
+    movies = pd.merge(movies, ratings, on="movieId", how="inner")
+
+    #get popularity
+    popularity = pd.DataFrame(movies[['userId', 'title', 'movieId']].groupby(['title', 'movieId']).agg(['count']))
+    popularity.reset_index(inplace=True)
+    popularity.columns = ['title', 'movieId', 'ratings_count']
+    popularity.sort_values('ratings_count', ascending=False, inplace=True)
+    movies = pd.merge(popularity[['movieId', 'ratings_count']], movies, on='movieId')
+    movies.reset_index(inplace=True)
+
+    #get average ratings
+    average_ratings = pd.DataFrame(movies[['rating', 'title', 'movieId']].groupby(['title', 'movieId']).agg(['mean']))
+    average_ratings.reset_index(inplace=True)
+    average_ratings.columns = ['title', 'movieId', 'avg_rating']
+    movies = pd.merge(average_ratings[['movieId', 'avg_rating']], movies, on='movieId')
+    movies.reset_index(inplace=True)
+
+    movies = movies[['movieId', 'title', 'genres', 'ratings_count', 'avg_rating']]
+    movies.drop_duplicates(inplace=True)
+    movies.set_index('movieId', inplace=True, drop=True)
+    movies.sort_index(ascending=True, inplace=True)
+
+    st.write("Movie popularity: ")
+    st.write(movies)
+
+    def get_detailed_recs(movie_id, embeddings, file_path):
+        #get similar movies
+        sim_model = SimilarityPredictions(embeddings, similarity_metric="cosine")
+        #sim_model = SimilarityPredictions(embeddings, similarity_metric="euclidean")
+        output = sim_model.predict_similar_items(seed_item=movie_id, n=100)
+        similar_movies = pd.DataFrame(output)
+        similar_movies.set_index('item_id', inplace=True)
+        sim_df = pd.merge(movies, similar_movies, left_index=True, right_index=True)
+        sim_df.sort_values('similarity_score', ascending=False, inplace=True)
+        
+        #save recs locally
+        sim_df.head(100).to_csv(file_path, index=False, header=True)
+        return sim_df.head(100)
+        
+    movie_titles = movies['title'].tolist()
+
+    st.subheader("Get recommendations: ")
+
+    option = st.selectbox(
+        'Pick a movie',
+        movie_titles)
+    st.write('You selected:', option)
+
+    movid = movies[movies['title'] == option].index
+
+    get_detailed_recs(movid[0], content_embeddings, 'content_recs_nb.csv')
+    recs = pd.read_csv("content_recs_nb.csv")
+    print(recs.iloc[0])
+
+    st.write("Your recommendations: ")
+    st.write(recs['title'])
+    def fetch_movielens(
+        data_home=None,
+        indicator_features=True,
+        genre_features=False,
+        min_rating=0.0,
+        download_if_missing=True,
+    ):
+
+        if not (indicator_features or genre_features):
+            raise ValueError(
+                "At least one of item_indicator_features " "or genre_features must be True"
+            )
+
+        users = pd.read_csv('data/modified_users.csv')
+        ratings = pd.read_csv('data/modified_ratings.csv')
+        movies = pd.read_csv('data/modified_movies.csv')
+        
+        users = users['userId']
+        movies = movies['movieId']
+
+        user_ids = range(len(users))
+        movie_ids = range(len(movies))
+
+        user_to_id = dict(zip(users, user_ids))
+        movie_to_id = dict(zip(movies, movie_ids))
+
+        # get adjacency info
+        num_user = users.shape[0]
+        num_item = movies.shape[0]
+
+        # initialize the adjacency matrix
+        rat = np.zeros((num_user, num_item))
+
+        for index, row in ratings.iterrows():
+            user, movie, rating = row[:3]
+            if num_user != -1:
+                if user not in user_to_id: break
+            # create ratings matrix where (i, j) entry represents the ratings
+            # of movie j given by user i.
+            rat[user_to_id[user], movie_to_id[movie]] = rating
+
+
+        num_train_replaced = \
+                round((0.2)*num_user*num_item)
+
+        # edges masked during training
+        indices_user = np.random.randint(0, num_user, num_train_replaced)
+        indices_item = np.random.randint(0, num_item, num_train_replaced)
+
+        train_mask = np.ones((num_user, num_item))
+        train_mask[indices_user, indices_item] = 0
+
+        test_mask = np.ones_like(train_mask)
+
+        train = np.multiply(train_mask, rat)
+        test = np.multiply(test_mask, rat)
+
+        assert train.shape == test.shape
+
+        features = []
+        feature_labels = []
+        id_feature_labels = []
+
+        data = {
+            "train": train,
+            "test": test,
+            "item_features": features,
+            "item_feature_labels": feature_labels,
+            "item_labels": id_feature_labels,
+        }
+
+        return data
+
+    data = fetch_movielens(min_rating=3.0)
+
+    for dataset in ["test", "train"]:
+        data[dataset] = (data[dataset] > 0).astype("int8")
+
+    user_item = data["train"]
+
+    final_user_item = data["test"]
+
+    import random
+    def get_preds():
+        new_content_embeddings = content_embeddings.copy()
+        #calculating user embedding
+        df_movies = pd.read_csv('data/modified_movies.csv')
+        all_movies = list(df_movies['movieId'].unique())
+        content_recs = []
+        for user in range(200):
+            user_embedding = [0.00000]*100
+            for item in np.nonzero(user_item[user])[0]:
+                user_embedding += content_embeddings.iloc[item]
+            user_embedding /= user_item[user].sum().item()
+            new_content_embeddings = new_content_embeddings.append(user_embedding, ignore_index=True)
+            movie_recs = []
+            for items in get_detailed_recs(4923+user, new_content_embeddings, 'temp.csv')[:10].index:
+                movie_recs.append(items) 
+            rem_movies = list(set(all_movies) - set(movie_recs)) 
+            while(len(movie_recs) < 10):
+                movie_recs.append(random.choice(rem_movies))
+            content_recs.append(movie_recs)
+        return content_recs
+
+    number = st.number_input('Pick a userId')
+
+    movs = pd.read_csv("data/modified_movies.csv")
+    movtitle = []
+    for i in content_recs[int(number)]:
+        movtitle.append(movs[movs['movieId'] == i]['title'])
+
+    st.text(movtitle)
+
+
 
 
 
